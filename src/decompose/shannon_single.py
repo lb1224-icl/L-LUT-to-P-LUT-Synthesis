@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from .netlist import Netlist, NetlistBuilder, Signal
-from .tt_io import TruthTable
+from ..netlist import Netlist, NetlistBuilder, Signal
+from ..tt_io import TruthTable
 
 
 def cofactor(bits: int, n_vars: int, var_idx: int) -> Tuple[int, int]:
@@ -11,8 +11,8 @@ def cofactor(bits: int, n_vars: int, var_idx: int) -> Tuple[int, int]:
 
     if not (0 <= var_idx < n_vars):
         raise ValueError("var_idx out of range.")
-    stride = 1 << var_idx
-    block = stride << 1
+    stride = 1 << var_idx # 2 to the power of var_idx
+    block = stride << 1 # times by 2 (LSL 1)
     out_mask = 0
     f0 = 0
     f1 = 0
@@ -59,18 +59,20 @@ def _decompose(bits: int, vars_order: Tuple[Signal, ...], builder: NetlistBuilde
 
     sel = vars_order[-1]
     f0_bits, f1_bits = cofactor(bits, n_vars, n_vars - 1)
-    low_sig = _decompose(f0_bits, vars_order[:-1], builder)
-    high_sig = _decompose(f1_bits, vars_order[:-1], builder)
+    f0_sig = _decompose(f0_bits, vars_order[:-1], builder)
+    f1_sig = _decompose(f1_bits, vars_order[:-1], builder)
 
     return builder.add_lut(
-        inputs=(low_sig, high_sig, sel),
+        inputs=(f0_sig, f1_sig, sel),
         init=mux2_init(),
         tag=f"mux_sel_{sel.idx}",
     )
 
 
 def build_netlist(tt: TruthTable, share: bool = False) -> Netlist:
+    # Top-level builder function
     builder = NetlistBuilder(num_inputs=tt.n_inputs, share=share)
     inputs = tuple(Signal("x", i) for i in range(tt.n_inputs))
     output = _decompose(tt.bits, inputs, builder)
     return builder.build(output)
+

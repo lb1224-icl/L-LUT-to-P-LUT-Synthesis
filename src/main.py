@@ -13,7 +13,12 @@ def _parse_args():
     parser = argparse.ArgumentParser(description="L-LUT to LUT6 mapper (Shannon).")
     parser.add_argument("--tt", required=True, help="Path to HEX truth table file.")
     parser.add_argument("--out_dir", default="build", help="Output directory for SV files.")
-    parser.add_argument("--share", type=int, default=0, help="Enable LUT sharing (0/1).")
+    parser.add_argument(
+        "--method",
+        choices=["shannon_single", "shannon_single_share", "shannon_multi"],
+        default="shannon_single",
+        help="Decomposition strategy.",
+    )
     parser.add_argument("--gen_tb", type=int, default=0, help="Also emit SystemVerilog testbench (0/1).")
     parser.add_argument("--skip_py_verify", action="store_true", help="Skip Python exhaustive verification.")
     return parser.parse_args()
@@ -22,7 +27,7 @@ def _parse_args():
 def main() -> None:
     args = _parse_args()
     tt = load_truth_table(args.tt)
-    netlist = build_netlist(tt, share=bool(args.share))
+    netlist = build_netlist(tt, method=args.method) 
 
     if not args.skip_py_verify:
         exhaustive_verify(netlist, tt.bits)
@@ -37,4 +42,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

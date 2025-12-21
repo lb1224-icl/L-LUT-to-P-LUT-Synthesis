@@ -1,2 +1,2 @@
-"""Package initialization for LUT decomposition toolflow."""
+# Package initialization 
 

@@ -35,5 +35,5 @@ def exhaustive_verify(netlist: Netlist, truth_bits: int) -> bool:
         got = evaluate_netlist(netlist, vec)
         if expected != got:
             raise AssertionError(f"Mismatch at vector {vec}: expected {expected}, got {got}")
+    print("Verification passed.")
     return True
-
