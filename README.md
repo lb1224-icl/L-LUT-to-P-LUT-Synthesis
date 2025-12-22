@@ -11,13 +11,14 @@
 - `shannon_single`: one-variable-per-level Shannon tree; no sharing
 - `shannon_single_share`: same tree, with memoized sharing of identical LUT6 nodes
 - `shannon_multi`:  Multi-variable-per-level split
+- `shannon_smart`:  Adds heuristic to find best cofactor pairs (BDD inspired). Checks for inversion or simplification of cofactors (i.e. a leaf is all 1'b1, replace LUT with a 1'b1 input)
 
 ## CLI reference
 | Flag | Description | Values / Default |
 | --- | --- | --- |
 | `--tt` | Input HEX file (`HEX = ...`), e.g. `data/truth_table_16.hex`. | Required |
 | `--out_dir` | Directory for generated SV (`plut_prims.sv`, `top.sv`, optional `tb.sv`). | `build` |
-| `--method` | Decomposition choice. | `shannon_single` (default) \| `shannon_single_share` \| `shannon_multi` |
+| `--method` | Decomposition choice. | `shannon_single` (default) \| `shannon_single_share` \| `shannon_multi` \| `shannon_smart` |
 | `--gen_tb` | Emit SV testbench that exhaustively checks all inputs. | `0` (default) or `1` |
 | `--skip_py_verify` | Skip Python exhaustive verification (speeds up large N). | Off by default |
 

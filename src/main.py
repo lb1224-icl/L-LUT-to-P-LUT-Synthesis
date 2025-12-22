@@ -15,7 +15,7 @@ def _parse_args():
     parser.add_argument("--out_dir", default="build", help="Output directory for SV files.")
     parser.add_argument(
         "--method",
-        choices=["shannon_single", "shannon_single_share", "shannon_multi"],
+        choices=["shannon_single", "shannon_single_share", "shannon_multi", "shannon_smart"],
         default="shannon_single",
         help="Decomposition strategy.",
     )

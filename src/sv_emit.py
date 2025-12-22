@@ -7,7 +7,11 @@ from .netlist import LUTNode, Netlist, Signal
 
 
 def _sig_name(sig: Signal) -> str:
-    return f"x[{sig.idx}]" if sig.kind == "x" else f"n{sig.idx}"
+    if sig.kind == "b":
+        val = "1'b1" if sig.idx else "1'b0"
+        return val if not sig.inv else ("1'b0" if sig.idx else "1'b1") # might be unnecessary, don't think any inversions can happen on consts
+    base = f"x[{sig.idx}]" if sig.kind == "x" else f"n{sig.idx}"
+    return f"~({base})" if sig.inv else base
 
 
 def _pad_inputs(inputs: Iterable[Signal]) -> List[str]:
@@ -119,4 +123,3 @@ def emit_sv_files(
     emit_top(netlist, out_dir / "top.sv")
     if gen_testbench and tt_hex is not None:
         emit_testbench(netlist, tt_hex, out_dir / "tb.sv")
-

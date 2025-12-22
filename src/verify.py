@@ -20,11 +20,19 @@ def evaluate_netlist(netlist: Netlist, vector: int) -> int:
     for i in range(netlist.num_inputs):
         values[Signal("x", i)] = (vector >> i) & 1
 
-    for node in netlist.nodes:
-        in_bits = tuple(values[sig] for sig in node.inputs) # get already evaluated input bits
-        values[Signal("n", node.node_id)] = _node_output(node.init, in_bits) # evaluate node and store its output
+    def _val(sig: Signal) -> int:
+        if sig.kind == "b":
+            base_val = sig.idx & 1
+        else:
+            base = Signal(sig.kind, sig.idx)
+            base_val = values[base]
+        return base_val ^ int(sig.inv)
 
-    return values[netlist.output] # return final output value
+    for node in netlist.nodes: # evaluate in topological order (adding all n<val> nodes in order)
+        in_bits = tuple(_val(sig) for sig in node.inputs)
+        values[Signal("n", node.node_id)] = _node_output(node.init, in_bits)
+
+    return _val(netlist.output)
 
 
 def exhaustive_verify(netlist: Netlist, truth_bits: int) -> bool:

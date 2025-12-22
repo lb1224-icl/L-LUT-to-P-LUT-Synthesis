@@ -6,17 +6,19 @@ from typing import Dict, Iterable, List, Tuple
 
 @dataclass(frozen=True)
 class Signal:
-    kind: str # 'x' for primary input, 'n' for LUT output
-    idx: int
+    kind: str  # 'x' for primary input, 'n' for LUT output, 'b' for constant
+    idx: int 
+    inv: bool = False
 
     def __post_init__(self) -> None:
-        if self.kind not in {"x", "n"}:
+        if self.kind not in {"x", "n", "b"}:
             raise ValueError(f"Unsupported signal kind: {self.kind}")
         if self.idx < 0:
             raise ValueError("Signal index must be non-negative.")
 
     def __str__(self) -> str:
-        return f"{self.kind}{self.idx}"
+        prefix = "~" if self.inv else ""
+        return f"{prefix}{self.kind}{self.idx}"
 
 
 @dataclass(frozen=True)
@@ -38,11 +40,13 @@ class Netlist:
     output: Signal
 
     def depth(self) -> int:
-        # Return maximum logic level (PIs at level 0)
+        # Return maximum logic level (PIs and consts at level 0)
         levels: Dict[Signal, int] = {Signal("x", i): 0 for i in range(self.num_inputs)}
+        levels[Signal("b", 0)] = 0
+        levels[Signal("b", 1)] = 0
         max_level = 0
         for node in self.nodes:
-            node_level = 1 + max(levels[inp] for inp in node.inputs)
+            node_level = 1 + max(levels[Signal(inp.kind, inp.idx)] for inp in node.inputs) # inversions are free edges
             levels[Signal("n", node.node_id)] = node_level
             max_level = max(max_level, node_level)
         return max_level
@@ -61,9 +65,10 @@ class Netlist:
 
 
 class NetlistBuilder:
-    def __init__(self, num_inputs: int, share: bool = False) -> None:
+    def __init__(self, num_inputs: int, share: bool = False, smart: bool = False) -> None:
         self.num_inputs = num_inputs
         self.share = share
+        self.smart = smart
         self.nodes: List[LUTNode] = []
         self._cache: Dict[Tuple[int, Tuple[Signal, ...]], Signal] = {}
         self._next_id = 0
@@ -73,9 +78,22 @@ class NetlistBuilder:
         if len(ordered_inputs) > 6:
             raise ValueError("LUT6 supports at most 6 inputs.")
 
+        # Collapse constant INIT patterns early.
+        if init == 0:
+            return Signal("b", 0)
+        if init == (1 << 64) - 1:
+            return Signal("b", 1)
+
         key = (init, ordered_inputs)
-        if self.share and key in self._cache:
+        inv_init = (~init) & ((1 << 64) - 1)
+        inv_key = (inv_init, ordered_inputs)
+
+        if (self.share or self.smart) and key in self._cache:
             return self._cache[key]
+
+        if self.smart and inv_key in self._cache:
+            base_sig = self._cache[inv_key]
+            return Signal(base_sig.kind, base_sig.idx, inv=not base_sig.inv)
 
         node_id = self._next_id
         self._next_id += 1
@@ -83,11 +101,10 @@ class NetlistBuilder:
         self.nodes.append(node)
 
         out_sig = Signal("n", node_id)
-        if self.share:
+        if self.share or self.smart:
             self._cache[key] = out_sig
         return out_sig
 
     def build(self, output: Signal) -> Netlist:
         # Finalize and return the netlist
         return Netlist(num_inputs=self.num_inputs, nodes=self.nodes, output=output)
-

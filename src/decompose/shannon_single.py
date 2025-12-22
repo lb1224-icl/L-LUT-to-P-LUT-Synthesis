@@ -75,4 +75,3 @@ def build_netlist(tt: TruthTable, share: bool = False) -> Netlist:
     inputs = tuple(Signal("x", i) for i in range(tt.n_inputs))
     output = _decompose(tt.bits, inputs, builder)
     return builder.build(output)
-

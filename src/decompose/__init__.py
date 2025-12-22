@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .shannon_single import build_netlist as build_shannon_single
 from .shannon_multi import build_netlist as build_shannon_multi
+from .shannon_smart import build_netlist as build_shannon_smart
 from ..tt_io import TruthTable
 from ..netlist import Netlist
 
@@ -14,5 +15,6 @@ def build_netlist(tt: TruthTable, method: str = "shannon_single") -> Netlist:
         return build_shannon_single(tt, share=True)
     if method == "shannon_multi":
         return build_shannon_multi(tt, share=True)
+    if method == "shannon_smart":
+        return build_shannon_smart(tt, share=True, smart=True)
     raise ValueError(f"Unknown method '{method}'")
-
