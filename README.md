@@ -8,11 +8,13 @@
 - Optionally exhaustively verifies in Python and/or emits a SystemVerilog testbench
 
 ## Methods
-- `shannon_single`: one-variable-per-level Shannon tree; no sharing
-- `shannon_single_share`: same tree, with memoized sharing of identical LUT6 nodes
-- `shannon_multi`:  Multi-variable-per-level split
-- `shannon_smart`:  Adds heuristic to find best cofactor pairs (BDD inspired). Checks for inversion or simplification of cofactors (i.e. a leaf is all 1'b1, replace LUT with a 1'b1 input)
-
+- `shannon_single`: Classic Shannon expansion with one variable per mux level, fixed input order (x0..xN-1). Baseline for comparison.
+- `shannon_single_share`: Same as `shannon_single`, but caches and reuses identical LUT6 nodes keyed by `(INIT, ordered_inputs)`. Reduces unique LUTs when cofactors repeat.
+- `shannon_multi`: Multi-variable-per-level split (4:1 mux stages). Aims to reduce depth versus single-variable splitting.
+- `shannon_smart`: Two-variable splits chosen by an entropy + Hamming-distance heuristic:
+  - For every variable pair, build the four cofactors (00, 01, 10, 11).
+  - Compute a score = sum of cofactor entropies (bias toward cofactors near-constant `images/entropy_graph.png` ), with total pairwise normalized Hamming distance as a tie-breaker (bias toward similar cofactors for sharing).
+  - Pick the best pair at each level and recurse. This tends to preserve structure (e.g., paired bits, balanced halves) and can lower depth/unique LUTs compared to fixed-order splits. 
 ## CLI reference
 | Flag | Description | Values / Default |
 | --- | --- | --- |
