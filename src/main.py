@@ -15,7 +15,7 @@ def _parse_args():
     parser.add_argument("--out_dir", default="build", help="Output directory for SV files.")
     parser.add_argument(
         "--method",
-        choices=["shannon_single", "shannon_single_share", "shannon_multi", "shannon_smart"],
+        choices=["shannon_single", "shannon_single_share", "shannon_multi", "shannon_smart", "reducedLUT", "bdd"],
         default="shannon_single",
         help="Decomposition strategy.",
     )
@@ -27,10 +27,10 @@ def _parse_args():
 def main() -> None:
     args = _parse_args()
     tt = load_truth_table(args.tt)
-    netlist = build_netlist(tt, method=args.method) 
+    netlist = build_netlist(tt, method=args.method)
 
     if not args.skip_py_verify:
-        exhaustive_verify(netlist, tt.bits)
+        exhaustive_verify(netlist, tt.bits, tt.out_width)
 
     stats = netlist.stats()
     print(f"inputs={stats['inputs']} nodes={stats['nodes']} unique={stats['unique']} depth={stats['depth']}")

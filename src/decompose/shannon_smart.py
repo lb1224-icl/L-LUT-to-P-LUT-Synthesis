@@ -3,8 +3,7 @@ from __future__ import annotations
 import math
 from typing import List, Tuple
 
-from ..netlist import Netlist, NetlistBuilder, Signal
-from ..tt_io import TruthTable
+from ..netlist import NetlistBuilder, Signal
 
 
 def cofactor(bits: int, n_vars: int, var_idxs: List[int]) -> Tuple[int, int, int, int]:
@@ -130,14 +129,11 @@ def _decompose(bits: int, vars_order: Tuple[Signal, ...], builder: NetlistBuilde
     )
 
 
-def build_netlist(tt: TruthTable, share: bool = False, smart: bool = False) -> Netlist:
-    # Top-level builder function
-    builder = NetlistBuilder(num_inputs=tt.n_inputs, share=share, smart=smart)
-    inputs = tuple(Signal("x", i) for i in range(tt.n_inputs))
-    if tt.bits == 0:
-        return builder.build(Signal("c", 0))
-    elif tt.bits == (1 << (1 << tt.n_inputs)) - 1:
-        return builder.build(Signal("c", 1))
-
-    output = _decompose(tt.bits, inputs, builder)
-    return builder.build(output)
+def build_signal(bits: int, inputs: Tuple[Signal, ...], builder: NetlistBuilder) -> Signal:
+    # Build a netlist cone for a single-output truth table using entropy+Hamming selection
+    n_entries = 1 << len(inputs)
+    if bits == 0:
+        return Signal("b", 0)
+    if bits == (1 << n_entries) - 1:
+        return Signal("b", 1)
+    return _decompose(bits, inputs, builder)

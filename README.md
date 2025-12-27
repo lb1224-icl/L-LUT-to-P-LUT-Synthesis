@@ -33,10 +33,26 @@ python -m src.main --tt data/truth_table_16.hex --out_dir build --method shannon
 ```
 
 ## Generate random truth tables
-Create a fresh HEX file:
+### DNN-like neuron sampler (with reachable-mask)
+Use `src.gen_random_tt` to create a pseudo neuron truth table plus a reachable input mask (used for compressedLUT and reducedLUT):
 ```
-python -m src.gen_random_tt.py --inputs <N> --out data/<name>.hex --seed <0..2**32-1>
+python -m src.gen_random_tt --inputs <N> --out data/<name>.hex --seed <0..2**32-1> \
+  --max_weight 3 --active_prob 0.3 --reachable_samples -1
 ```
+Options:
+- `--inputs`: number of input signals (fanin). All inputs share the same bit-width.
+- `--in_width`: bit-width per input signal (default 1).
+- `--out_width`: bit-width per output word (default 1; the neuron output is replicated across bits).
+- `--max_weight`: integer weights are sampled uniformly from `[-max_weight, max_weight]`.
+- `--seed`: RNG seed for reproducibility.
+- `--active_prob`: probability an input bit is 1 during reachable-mask sampling.
+- `--reachable_samples`: number of samples for the reachable mask; `-1` covers all inputs.
+
+What it does:
+- Samples integer weights and a bias per output bit (guaranteeing not all zero per output).
+- Builds the truth table for each output bit: `sum(weights[out] * inputs) + bias[out] >= 0` (inputs treated as unsigned chunks of `in_width` bits).
+- Generates a `REACHABLE = ...` hex mask by Monte Carlo sampling likely inference patterns (each bit set with probability `active_prob`, for `reachable_samples` draws. Use `-1` to cover all inputs). This approximates which input vectors are observed in practice.
+
 Then map it:
 ```
 python -m src.main --tt data/<name>.hex --out_dir build --method shannon_single_share --gen_tb 0 --skip_py_verify

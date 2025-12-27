@@ -7,7 +7,7 @@ from typing import Dict, Iterable, List, Tuple
 @dataclass(frozen=True)
 class Signal:
     kind: str  # 'x' for primary input, 'n' for LUT output, 'b' for constant
-    idx: int 
+    idx: int
     inv: bool = False
 
     def __post_init__(self) -> None:
@@ -33,20 +33,23 @@ class LUTNode:
 
 @dataclass
 class Netlist:
-    # Combinational netlist of LUT nodes (Output)
+    # Combinational netlist of LUT nodes (multi-output)
 
-    num_inputs: int
+    total_input_bits: int
+    fanin: int
+    in_width: int
+    out_width: int
     nodes: List[LUTNode]
-    output: Signal
+    outputs: Tuple[Signal, ...]
 
     def depth(self) -> int:
         # Return maximum logic level (PIs and consts at level 0)
-        levels: Dict[Signal, int] = {Signal("x", i): 0 for i in range(self.num_inputs)}
+        levels: Dict[Signal, int] = {Signal("x", i): 0 for i in range(self.total_input_bits)}
         levels[Signal("b", 0)] = 0
         levels[Signal("b", 1)] = 0
         max_level = 0
         for node in self.nodes:
-            node_level = 1 + max(levels[Signal(inp.kind, inp.idx)] for inp in node.inputs) # inversions are free edges
+            node_level = 1 + max(levels[Signal(inp.kind, inp.idx)] for inp in node.inputs)  # inversions are free edges
             levels[Signal("n", node.node_id)] = node_level
             max_level = max(max_level, node_level)
         return max_level
@@ -57,7 +60,7 @@ class Netlist:
 
     def stats(self) -> Dict[str, int]:
         return {
-            "inputs": self.num_inputs,
+            "inputs": self.fanin,
             "nodes": len(self.nodes),
             "unique": self.unique_luts(),
             "depth": self.depth(),
@@ -65,8 +68,11 @@ class Netlist:
 
 
 class NetlistBuilder:
-    def __init__(self, num_inputs: int, share: bool = False, smart: bool = False) -> None:
-        self.num_inputs = num_inputs
+    def __init__(self, total_input_bits: int, fanin: int, in_width: int, out_width: int, share: bool = False, smart: bool = False) -> None:
+        self.total_input_bits = total_input_bits
+        self.fanin = fanin
+        self.in_width = in_width
+        self.out_width = out_width
         self.share = share
         self.smart = smart
         self.nodes: List[LUTNode] = []
@@ -105,6 +111,13 @@ class NetlistBuilder:
             self._cache[key] = out_sig
         return out_sig
 
-    def build(self, output: Signal) -> Netlist:
+    def build(self, outputs: Tuple[Signal, ...]) -> Netlist:
         # Finalize and return the netlist
-        return Netlist(num_inputs=self.num_inputs, nodes=self.nodes, output=output)
+        return Netlist(
+            total_input_bits=self.total_input_bits,
+            fanin=self.fanin,
+            in_width=self.in_width,
+            out_width=self.out_width,
+            nodes=self.nodes,
+            outputs=outputs,
+        )

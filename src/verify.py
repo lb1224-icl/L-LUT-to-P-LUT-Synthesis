@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Tuple
 
 from .netlist import Netlist, Signal
-from .tt_io import bit_at
 
 
 def _node_output(node_init: int, inputs: tuple[int, ...]) -> int:
@@ -14,10 +13,10 @@ def _node_output(node_init: int, inputs: tuple[int, ...]) -> int:
     return (node_init >> idx) & 1
 
 
-def evaluate_netlist(netlist: Netlist, vector: int) -> int:
-    # Evaluate netlist output for a single input vector
+def evaluate_netlist(netlist: Netlist, vector: int) -> Tuple[int, ...]:
+    # Evaluate netlist outputs for a single input vector
     values: Dict[Signal, int] = {}
-    for i in range(netlist.num_inputs):
+    for i in range(netlist.total_input_bits):
         values[Signal("x", i)] = (vector >> i) & 1
 
     def _val(sig: Signal) -> int:
@@ -28,20 +27,21 @@ def evaluate_netlist(netlist: Netlist, vector: int) -> int:
             base_val = values[base]
         return base_val ^ int(sig.inv)
 
-    for node in netlist.nodes: # evaluate in topological order (adding all n<val> nodes in order)
+    for node in netlist.nodes:  # evaluate in topological order (adding all n<val> nodes in order)
         in_bits = tuple(_val(sig) for sig in node.inputs)
         values[Signal("n", node.node_id)] = _node_output(node.init, in_bits)
 
-    return _val(netlist.output)
+    return tuple(_val(out_sig) for out_sig in netlist.outputs)
 
 
-def exhaustive_verify(netlist: Netlist, truth_bits: int) -> bool:
-    # Check every possible input pattern against expected truth table
-    n_inputs = netlist.num_inputs
+def exhaustive_verify(netlist: Netlist, truth_bits: int, out_width: int) -> bool:
+    # Check every possible input pattern against expected truth table (multi-output)
+    n_inputs = netlist.total_input_bits
     for vec in range(1 << n_inputs):
-        expected = bit_at(truth_bits, vec)
         got = evaluate_netlist(netlist, vec)
-        if expected != got:
-            raise AssertionError(f"Mismatch at vector {vec}: expected {expected}, got {got}")
+        for out_idx in range(out_width):
+            expected = (truth_bits >> (vec * out_width + out_idx)) & 1
+            if expected != got[out_idx]:
+                raise AssertionError(f"Mismatch at vector {vec} bit {out_idx}: expected {expected}, got {got[out_idx]}")
     print("Verification passed.")
     return True

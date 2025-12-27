@@ -1,0 +1,10 @@
+# Pseudo DNN-neuron truth table (sum(weights*inputs) + bias >= 0)
+# FANIN = 4
+# IN_WIDTH = 1
+# OUT_WIDTH = 1
+# WEIGHTS = [-2, 1, 3, 3]
+# BIAS = 3
+# REACHABLE_SAMPLES = 16, ACTIVE_PROB = 0.3
+# BIT_ORDER = x(N-1) ... x0 (x0 = LSB)
+HEX = FFFF
+REACHABLE = 071F

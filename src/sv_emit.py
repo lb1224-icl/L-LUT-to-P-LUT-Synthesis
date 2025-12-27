@@ -49,7 +49,9 @@ def emit_top(netlist: Netlist, path: Path, module_name: str = "top") -> None:
     # Emit structural netlist using plut_lut6 primitives
     lines: List[str] = []
     lines.append("`timescale 1ns/1ps\n")
-    lines.append(f"module {module_name} (input wire [{netlist.num_inputs - 1}:0] x, output wire f);\n")
+    lines.append(
+        f"module {module_name} (input wire [{netlist.total_input_bits - 1}:0] x, output wire [{netlist.out_width - 1}:0] f);\n"
+    )
 
     if netlist.nodes:
         for node in netlist.nodes:
@@ -67,7 +69,8 @@ def emit_top(netlist: Netlist, path: Path, module_name: str = "top") -> None:
         )
         lines.append("    );\n\n")
 
-    lines.append(f"    assign f = {_sig_name(netlist.output)};\n")
+    for idx, out_sig in enumerate(netlist.outputs):
+        lines.append(f"    assign f[{idx}] = {_sig_name(out_sig)};\n")
     lines.append("endmodule\n")
 
     path.write_text("".join(lines))
@@ -80,26 +83,29 @@ def emit_testbench(
     top_module: str = "top",
 ) -> None:
     # Emit exhaustive testbench that checks the truth table
-    n_inputs = netlist.num_inputs
-    width = 1 << n_inputs
-    hex_len = width // 4
+    n_inputs = netlist.total_input_bits
+    n_outputs = netlist.out_width
+    entries = 1 << n_inputs
+    total_bits = entries * n_outputs
+    hex_len = total_bits // 4
     hex_body = tt_hex.rjust(hex_len, "0")
 
     lines: List[str] = []
     lines.append("`timescale 1ns/1ps\n")
     lines.append("module tb;\n")
     lines.append(f"    localparam int N_INPUTS = {n_inputs};\n")
-    lines.append(f"    localparam logic [({width})-1:0] TT = {width}'h{hex_body};\n")
+    lines.append(f"    localparam int OUT_WIDTH = {n_outputs};\n")
+    lines.append(f"    localparam logic [({total_bits})-1:0] TT = {total_bits}'h{hex_body};\n")
     lines.append("    reg  [N_INPUTS-1:0] x;\n")
-    lines.append("    wire f;\n\n")
+    lines.append(f"    wire [OUT_WIDTH-1:0] f;\n\n")
     lines.append(f"    {top_module} dut (.x(x), .f(f));\n\n")
     lines.append("    integer i;\n")
     lines.append("    initial begin\n")
     lines.append("        for (i = 0; i < (1<<N_INPUTS); i = i + 1) begin\n")
     lines.append("            x = i[N_INPUTS-1:0];\n")
     lines.append("            #1;\n")
-    lines.append("            if (f !== TT[i]) begin\n")
-    lines.append('                $error("Mismatch at %0d: expected %0b got %0b", i, TT[i], f);\n')
+    lines.append("            if (f !== TT[i*OUT_WIDTH +: OUT_WIDTH]) begin\n")
+    lines.append('                $error("Mismatch at %0d: expected %0b got %0b", i, TT[i*OUT_WIDTH +: OUT_WIDTH], f);\n')
     lines.append("                $finish;\n")
     lines.append("            end\n")
     lines.append("        end\n")

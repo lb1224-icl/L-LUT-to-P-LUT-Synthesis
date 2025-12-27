@@ -1,3 +1,5 @@
+# PLACEHOLDER SO IT COMPILES (COPY OF MULTI SHANNON, NOT YET IMPLEMENTED)
+
 from __future__ import annotations
 
 from typing import List, Tuple
@@ -84,10 +86,5 @@ def _decompose(bits: int, vars_order: Tuple[Signal, ...], builder: NetlistBuilde
 
 
 def build_signal(bits: int, inputs: Tuple[Signal, ...], builder: NetlistBuilder) -> Signal:
-    # Build a netlist cone for a single-output truth table using two-variable splits
-    n_entries = 1 << len(inputs)
-    if bits == 0:
-        return Signal("b", 0)
-    if bits == (1 << n_entries) - 1:
-        return Signal("b", 1)
+    """Placeholder: reuses multi-variable Shannon decomposition."""
     return _decompose(bits, inputs, builder)

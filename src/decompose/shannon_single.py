@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from ..netlist import Netlist, NetlistBuilder, Signal
-from ..tt_io import TruthTable
+from ..netlist import NetlistBuilder, Signal
 
 
 def cofactor(bits: int, n_vars: int, var_idx: int) -> Tuple[int, int]:
@@ -69,9 +68,11 @@ def _decompose(bits: int, vars_order: Tuple[Signal, ...], builder: NetlistBuilde
     )
 
 
-def build_netlist(tt: TruthTable, share: bool = False) -> Netlist:
-    # Top-level builder function
-    builder = NetlistBuilder(num_inputs=tt.n_inputs, share=share)
-    inputs = tuple(Signal("x", i) for i in range(tt.n_inputs))
-    output = _decompose(tt.bits, inputs, builder)
-    return builder.build(output)
+def build_signal(bits: int, inputs: Tuple[Signal, ...], builder: NetlistBuilder) -> Signal:
+    # Build a netlist cone for a single-output truth table using Shannon splitting
+    n_entries = 1 << len(inputs)
+    if bits == 0:
+        return Signal("b", 0)
+    if bits == (1 << n_entries) - 1:
+        return Signal("b", 1)
+    return _decompose(bits, inputs, builder)
