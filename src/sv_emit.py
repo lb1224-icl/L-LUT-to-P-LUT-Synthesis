@@ -69,8 +69,23 @@ def emit_top(netlist: Netlist, path: Path, module_name: str = "top") -> None:
         )
         lines.append("    );\n\n")
 
-    for idx, out_sig in enumerate(netlist.outputs):
-        lines.append(f"    assign f[{idx}] = {_sig_name(out_sig)};\n")
+    if netlist.combine_mode == "ldtc" and netlist.combine_meta:
+        tss_w = netlist.combine_meta.get("tss_width", 0)
+        td_w = netlist.combine_meta.get("td_width", 0)
+        out_w = netlist.combine_meta.get("orig_out_width", netlist.out_width)
+        shift = netlist.combine_meta.get("shift_bits", 0)
+        lines.append(f"    wire [{tss_w - 1}:0] ldtc_tss;\n")
+        lines.append(f"    wire [{td_w - 1}:0] ldtc_td;\n")
+        for idx in range(tss_w):
+            lines.append(f"    assign ldtc_tss[{idx}] = {_sig_name(netlist.outputs[idx])};\n")
+        for idx in range(td_w):
+            lines.append(f"    assign ldtc_td[{idx}] = {_sig_name(netlist.outputs[tss_w + idx])};\n")
+        lines.append(f"    wire [{out_w - 1}:0] ldtc_tss_ext = {{ {{ {(out_w - tss_w)}{{1'b0}} }}, ldtc_tss }} << {shift};\n")
+        lines.append(f"    wire [{out_w - 1}:0] ldtc_td_ext  = {{ {{ {(out_w - td_w)}{{1'b0}} }}, ldtc_td  }};\n")
+        lines.append("    assign f = ldtc_tss_ext + ldtc_td_ext;\n")
+    else:
+        for idx, out_sig in enumerate(netlist.outputs):
+            lines.append(f"    assign f[{idx}] = {_sig_name(out_sig)};\n")
     lines.append("endmodule\n")
 
     path.write_text("".join(lines))

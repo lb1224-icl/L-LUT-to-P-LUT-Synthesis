@@ -8,19 +8,23 @@
 - Optionally exhaustively verifies in Python and/or emits a SystemVerilog testbench
 
 ## Methods
-- `shannon_single`: Classic Shannon expansion with one variable per mux level, fixed input order (x0..xN-1). Baseline for comparison.
-- `shannon_single_share`: Same as `shannon_single`, but caches and reuses identical LUT6 nodes keyed by `(INIT, ordered_inputs)`. Reduces unique LUTs when cofactors repeat.
-- `shannon_multi`: Multi-variable-per-level split (4:1 mux stages). Aims to reduce depth versus single-variable splitting.
-- `shannon_smart`: Two-variable splits chosen by an entropy + Hamming-distance heuristic:
+- `shannon_single` (`build_signal` in `shannon_single.py`): Classic Shannon expansion with one variable per mux level, fixed input order (x0..xN-1). Baseline for comparison.
+- `shannon_single_share` (`build_signal` in `shannon_single.py` with sharing): Same as above, but caches and reuses identical LUT6 nodes keyed by `(INIT, ordered_inputs)`. Reduces unique LUTs when cofactors repeat.
+- `shannon_multi` (`build_signal` in `shannon_multi.py`): Multi-variable-per-level split (4:1 mux stages). Aims to reduce depth versus single-variable splitting.
+- `shannon_smart` (`build_signal` in `shannon_smart.py`): Two-variable splits chosen by an entropy + Hamming-distance heuristic:
   - For every variable pair, build the four cofactors (00, 01, 10, 11).
-  - Compute a score = sum of cofactor entropies (bias toward cofactors near-constant `images/entropy_graph.png` ), with total pairwise normalized Hamming distance as a tie-breaker (bias toward similar cofactors for sharing).
-  - Pick the best pair at each level and recurse. This tends to preserve structure (e.g., paired bits, balanced halves) and can lower depth/unique LUTs compared to fixed-order splits. 
+  - Compute a score = sum of cofactor entropies (bias toward cofactors near-constant), with total pairwise normalized Hamming distance as a tie-breaker (bias toward similar cofactors for sharing).
+  - Pick the best pair at each level and recurse. This tends to preserve structure (e.g., paired bits, balanced halves) and can lower depth/unique LUTs compared to fixed-order splits.
+- `ldtc` (`split_tss_td` and `build_ldtc` in `ldtc.py`): Lossless Differential Truth Table Compression, inspired by [IEEE paper](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9628172). It searches sub-sampling/width parameters `(s, wL, wH)` to produce:
+  - `Tss`: a subsampled base table (high bits).
+  - `Td`: a full-size delta table (low bits).
+  - Reconstruction is `(Tss << shift_bits) + Td`, where `shift_bits = out_width - wH`. Tss is indexed by the upper `total_input_bits - s` address bits; Td by the full address. Both tables are mapped with the smart Shannon flow, and SV emits the sum to recover the original outputs.
 ## CLI reference
 | Flag | Description | Values / Default |
 | --- | --- | --- |
 | `--tt` | Input HEX file (`HEX = ...`), e.g. `data/truth_table_16.hex`. | Required |
 | `--out_dir` | Directory for generated SV (`plut_prims.sv`, `top.sv`, optional `tb.sv`). | `build` |
-| `--method` | Decomposition choice. | `shannon_single` (default) \| `shannon_single_share` \| `shannon_multi` \| `shannon_smart` |
+| `--method` | Decomposition choice. | `shannon_single` (default) \| `shannon_single_share` \| `shannon_multi` \| `shannon_smart` \| `ldtc` |
 | `--gen_tb` | Emit SV testbench that exhaustively checks all inputs. | `0` (default) or `1` |
 | `--skip_py_verify` | Skip Python exhaustive verification (speeds up large N). | Off by default |
 

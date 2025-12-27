@@ -41,6 +41,8 @@ class Netlist:
     out_width: int
     nodes: List[LUTNode]
     outputs: Tuple[Signal, ...]
+    combine_mode: str | None = None  # e.g., "ldtc"
+    combine_meta: dict | None = None  # e.g., widths/shift for ldtc
 
     def depth(self) -> int:
         # Return maximum logic level (PIs and consts at level 0)
@@ -68,7 +70,15 @@ class Netlist:
 
 
 class NetlistBuilder:
-    def __init__(self, total_input_bits: int, fanin: int, in_width: int, out_width: int, share: bool = False, smart: bool = False) -> None:
+    def __init__(
+        self,
+        total_input_bits: int,
+        fanin: int,
+        in_width: int,
+        out_width: int,
+        share: bool = False,
+        smart: bool = False,
+    ) -> None:
         self.total_input_bits = total_input_bits
         self.fanin = fanin
         self.in_width = in_width
@@ -111,7 +121,7 @@ class NetlistBuilder:
             self._cache[key] = out_sig
         return out_sig
 
-    def build(self, outputs: Tuple[Signal, ...]) -> Netlist:
+    def build(self, outputs: Tuple[Signal, ...], combine_mode: str | None = None, combine_meta: dict | None = None) -> Netlist:
         # Finalize and return the netlist
         return Netlist(
             total_input_bits=self.total_input_bits,
@@ -120,4 +130,6 @@ class NetlistBuilder:
             out_width=self.out_width,
             nodes=self.nodes,
             outputs=outputs,
+            combine_mode=combine_mode,
+            combine_meta=combine_meta or {},
         )

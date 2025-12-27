@@ -44,7 +44,8 @@ def main():
     total_input_bits = args.inputs * args.in_width
     width = 1 << total_input_bits  # number of input combinations
 
-    # Sample DNN-like weights/bias per output bit; ensure not all zero per output
+    # Sample DNN-like weights/bias per output bit
+    # Ensure not all zero per output
     weights: List[List[int]] = []
     biases: List[int] = []
     for _ in range(args.out_width):
