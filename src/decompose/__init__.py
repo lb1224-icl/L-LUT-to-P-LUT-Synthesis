@@ -6,6 +6,7 @@ from .shannon_single import build_signal as build_shannon_single
 from .shannon_multi import build_signal as build_shannon_multi
 from .shannon_smart import build_signal as build_shannon_smart
 from .ldtc import build_ldtc
+from .clut import build_clut
 from ..tt_io import TruthTable
 from ..netlist import Netlist, NetlistBuilder, Signal
 
@@ -36,6 +37,12 @@ def build_netlist(tt: TruthTable, method: str = "shannon_single") -> Netlist:
         tss_outputs, td_outputs, combine_meta = build_ldtc(tt.bits, tt.total_input_bits, tt.out_width, builder)
         all_outputs = tuple(list(tss_outputs) + list(td_outputs))
         return builder.build(all_outputs, combine_mode="ldtc", combine_meta=combine_meta)
+    elif method == "clut":
+        # Needs lots of changing
+        tss_outputs, tust_outputs, trsh_outputs, tidx_outputs, combine_meta = build_clut(tt.bits, tt.total_input_bits, tt.out_width, builder)
+        all_outputs = tuple(list(tss_outputs) + list(tust_outputs) + list(trsh_outputs) + list(tidx_outputs))
+        return builder.build(all_outputs, combine_mode="clut", combine_meta=combine_meta)
+
 
     build_fn, builder.share, builder.smart = _select_builder(method)
 

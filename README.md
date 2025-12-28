@@ -18,7 +18,12 @@
 - `ldtc` (`split_tss_td` and `build_ldtc` in `ldtc.py`): Lossless Differential Truth Table Compression, inspired by [IEEE paper](https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9628172). It searches sub-sampling/width parameters `(s, wL, wH)` to produce:
   - `Tss`: a subsampled base table (high bits).
   - `Td`: a full-size delta table (low bits).
-  - Reconstruction is `(Tss << shift_bits) + Td`, where `shift_bits = out_width - wH`. Tss is indexed by the upper `total_input_bits - s` address bits; Td by the full address. Both tables are mapped with the smart Shannon flow, and SV emits the sum to recover the original outputs.
+  - Reconstruction is `(Tss << shift_bits) + Td`, where `shift_bits = out_width - wH`. Tss is indexed by the upper `total_input_bits - s` address bits, Td by the full address. Both tables are mapped with the smart Shannon flow, and SV emits the sum to recover the original outputs.
+- `clut` (`split_tust_trsh_tidx` and `build_clut` in `clut.py`): Experimental CompressedLUT-style flow. Steps:
+  - First apply the LDTC split to get `Tss` (bases) and `Td` (deltas).
+  - Partition `Td` into sub-tables of size `2^ws`, build a similarity matrix to see when one sub-table can generate another via right shifts, and iteratively pick the generator that covers the most remaining sub-tables.
+  - Emit `UST` (unique sub-tables), `Tidx` (which UST to use per sub-table), and `Trsh` (shift per sub-table). `Tidx/Trsh` are indexed by the upper address bits; `UST` is indexed by the lower address bits plus `Tidx`.
+  - Reconstruction is `(Tss << shift_bits) + (UST[Tidx][offset] >> Trsh)`, where `offset` comes from the lower address bits. Works best when many sub-tables are identical up to small right shifts (e.g., `data/clut_bases_shifts.hex` shows good reduction because `UST` stays tiny and `Tidx/Trsh` are narrow).
 ## CLI reference
 | Flag | Description | Values / Default |
 | --- | --- | --- |
@@ -55,7 +60,7 @@ Options:
 What it does:
 - Samples integer weights and a bias per output bit (guaranteeing not all zero per output).
 - Builds the truth table for each output bit: `sum(weights[out] * inputs) + bias[out] >= 0` (inputs treated as unsigned chunks of `in_width` bits).
-- Generates a `REACHABLE = ...` hex mask by Monte Carlo sampling likely inference patterns (each bit set with probability `active_prob`, for `reachable_samples` draws. Use `-1` to cover all inputs). This approximates which input vectors are observed in practice.
+- Generates a `REACHABLE = ...` hex mask by Monte Carlo sampling likely inference patterns (each bit set with probability `active_prob`, for `reachable_samples` draws. Use `-1` to cover all inputs). This approximates which input vectors are observed in practice. (Will be used in future methods)
 
 Then map it:
 ```

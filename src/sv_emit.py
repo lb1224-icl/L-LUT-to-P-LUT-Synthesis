@@ -83,6 +83,35 @@ def emit_top(netlist: Netlist, path: Path, module_name: str = "top") -> None:
         lines.append(f"    wire [{out_w - 1}:0] ldtc_tss_ext = {{ {{ {(out_w - tss_w)}{{1'b0}} }}, ldtc_tss }} << {shift};\n")
         lines.append(f"    wire [{out_w - 1}:0] ldtc_td_ext  = {{ {{ {(out_w - td_w)}{{1'b0}} }}, ldtc_td  }};\n")
         lines.append("    assign f = ldtc_tss_ext + ldtc_td_ext;\n")
+    elif netlist.combine_mode == "clut" and netlist.combine_meta:
+        tss_w = netlist.combine_meta.get("tss_width", 0)
+        tust_w = netlist.combine_meta.get("tust_width", 0)
+        trsh_w = netlist.combine_meta.get("trsh_width", 0)
+        tidx_w = netlist.combine_meta.get("tidx_width", 0)
+        out_w = netlist.combine_meta.get("orig_out_width", netlist.out_width)
+        shift = netlist.combine_meta.get("shift_bits", 0)
+
+        lines.append(f"    wire [{tss_w - 1}:0] clut_tss;\n")
+        lines.append(f"    wire [{tust_w - 1}:0] clut_tust;\n")
+        lines.append(f"    wire [{trsh_w - 1}:0] clut_trsh;\n")
+        lines.append(f"    wire [{tidx_w - 1}:0] clut_tidx;\n")
+
+        base = 0
+        for idx in range(tss_w):
+            lines.append(f"    assign clut_tss[{idx}] = {_sig_name(netlist.outputs[base + idx])};\n")
+        base += tss_w
+        for idx in range(tust_w):
+            lines.append(f"    assign clut_tust[{idx}] = {_sig_name(netlist.outputs[base + idx])};\n")
+        base += tust_w
+        for idx in range(trsh_w):
+            lines.append(f"    assign clut_trsh[{idx}] = {_sig_name(netlist.outputs[base + idx])};\n")
+        base += trsh_w
+        for idx in range(tidx_w):
+            lines.append(f"    assign clut_tidx[{idx}] = {_sig_name(netlist.outputs[base + idx])};\n")
+
+        lines.append(f"    wire [{out_w - 1}:0] clut_tss_ext = {{ {{ {(out_w - tss_w)}{{1'b0}} }}, clut_tss }} << {shift};\n")
+        lines.append(f"    wire [{out_w - 1}:0] clut_delta   = {{ {{ {(out_w - tust_w)}{{1'b0}} }}, clut_tust }} >> clut_trsh;\n")
+        lines.append("    assign f = clut_tss_ext + clut_delta;\n")
     else:
         for idx, out_sig in enumerate(netlist.outputs):
             lines.append(f"    assign f[{idx}] = {_sig_name(out_sig)};\n")

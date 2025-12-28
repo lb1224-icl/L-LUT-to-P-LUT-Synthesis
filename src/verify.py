@@ -50,6 +50,39 @@ def evaluate_netlist(netlist: Netlist, vector: int) -> Tuple[int, ...]:
         combined = ((tss_val << shift) + td_val) & ((1 << orig_w) - 1)
         return tuple(((combined >> i) & 1) for i in range(orig_w))
 
+    if netlist.combine_mode == "clut" and netlist.combine_meta:
+        tss_w = netlist.combine_meta.get("tss_width", 0)
+        tust_w = netlist.combine_meta.get("tust_width", 0)
+        trsh_w = netlist.combine_meta.get("trsh_width", 0)
+        tidx_w = netlist.combine_meta.get("tidx_width", 0)
+        orig_w = netlist.combine_meta.get("orig_out_width", netlist.out_width)
+        shift = netlist.combine_meta.get("shift_bits", 0)
+
+        offset = 0
+        tss_val = 0
+        for i in range(tss_w):
+            tss_val |= (raw_out[offset + i] & 1) << i
+        offset += tss_w
+
+        tust_val = 0
+        for i in range(tust_w):
+            tust_val |= (raw_out[offset + i] & 1) << i
+        offset += tust_w
+
+        trsh_val = 0
+        for i in range(trsh_w):
+            trsh_val |= (raw_out[offset + i] & 1) << i
+        offset += trsh_w
+
+        # tidx bits follow but the TUST cone already used them; capture for completeness
+        tidx_val = 0
+        for i in range(tidx_w):
+            tidx_val |= (raw_out[offset + i] & 1) << i
+
+        delta = tust_val >> trsh_val
+        combined = ((tss_val << shift) + delta) & ((1 << orig_w) - 1)
+        return tuple(((combined >> i) & 1) for i in range(orig_w))
+
     return raw_out
 
 

@@ -1,4 +1,0 @@
-# Random truth table
-# N_INPUTS = 8
-# BIT_ORDER = x(N-1) ... x0 (x0 = LSB)
-HEX = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
